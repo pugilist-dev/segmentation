@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+.env
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+
+# Data (don't track large data files)
+data/raw/
+data/processed/
+data/annotations/
+
+# Models (don't track large model files)
+models/deep_learning/*.pt
+models/deep_learning/*.pth
+models/deep_learning/*.h5
+models/deep_learning/*.onnx
+
+# Results
+results/visualizations/
+results/metrics/
+
+# Logs
+logs/
+*.log
+*.log.* 
