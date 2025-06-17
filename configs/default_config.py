@@ -23,6 +23,7 @@ METRICS_DIR = os.path.join(RESULTS_DIR, 'metrics')
 MODELS_DIR = 'models'
 TRADITIONAL_MODELS_DIR = os.path.join(MODELS_DIR, 'traditional')
 DEEP_LEARNING_MODELS_DIR = os.path.join(MODELS_DIR, 'deep_learning')
+MODEL = 'cellpose'
 
 # Traditional segmentation parameters
 TRADITIONAL_CONFIG = {

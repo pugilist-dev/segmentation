@@ -29,7 +29,7 @@ class BaseSegmenter(ABC):
         """
         pass
     
-    def preprocess(self, images_dir):
+    def preprocess(self, images_dir): # get_composites shouuld be here 
         """
         Preprocess the input image before segmentation.
         

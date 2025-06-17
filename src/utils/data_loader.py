@@ -202,7 +202,16 @@ class SegmentationDataLoader:
         return np.array(frames, dtype=np.uint16)
 
 
-    def get_composite(self, dapi, ck, cd45, fitc):
+    def compute_composite(self, dapi, ck, cd45, fitc):
+        """
+        COmbine DAPI, CK, CD45, and FITC channels into a single RGB composite image. Used by CellposeSegmentor.
+
+        Args:
+            dapi (np.ndarray): DAPI channel image.
+            ck (np.ndarray): CK channel image.
+            cd45 (np.ndarray): CD45 channel image.
+            fitc (np.ndarray): FITC channel image.
+        """
 
         dtype = dapi.dtype
         max_val = np.iinfo(dapi.dtype).max
@@ -223,6 +232,9 @@ class SegmentationDataLoader:
         return rgb
 
     def get_composites(self, slides, offset, save_composites=False):
+        """
+        Create composite images from the provided slides.
+        """
         frames=[]
         for i in range(offset): 
             image0 = slides[i]
@@ -230,7 +242,7 @@ class SegmentationDataLoader:
             image2 = slides[i+2*offset]
             # skip Bright Field scan
             image3 = slides[i+3*offset] 
-            frames.append(self.get_composite(image0, image1, image2, image3)) 
+            frames.append(self.compute_composite(image0, image1, image2, image3)) 
 
             if save_composites:
                 composite_path = Path(self.mask_dir, f"composite_{i}.png")

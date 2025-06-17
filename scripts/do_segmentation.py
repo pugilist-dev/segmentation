@@ -31,7 +31,7 @@ def main():
     slides = data_loader.load_slides(config.RAW_DATA_DIR)
 
     log.logger.debug("Creating composits...")
-    composite_images = data_loader.get_composites(slides, config.SLIDE_INDEX_OFFSET)
+    composite_images = data_loader.get_composites(slides, config.SLIDE_INDEX_OFFSET) # creaing composites should be preprocessing which is in segmentor 
 
     log.logger.debug("Running Segmentation...")
     binary_masks = cellposeSegmentor.segment(composite_images)

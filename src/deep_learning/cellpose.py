@@ -24,10 +24,14 @@ class CellposeSegmentor(BaseSegmenter):
             log.logger.warning("Pretrained model path does not exist, using default model.")
             self.config.DEEP_LEARNING_CONFIG["model"]["name"] = "cpsam"  # Default model if not specified # not sure why syntax is so cursed 
         
-        self.model = models.CellposeModel(gpu = True, 
-                                          pretrained_model=str(Path(self.config.DEEP_LEARNING_MODELS_DIR, self.config.DEEP_LEARNING_CONFIG["model"]["name"])), 
-                                          device=torch.device(self.config.DEEP_LEARNING_CONFIG["device"]))
+        if self.config.MODEL == 'cellpose': 
+            self.model = models.CellposeModel(gpu = True, 
+                                            pretrained_model=str(Path(self.config.DEEP_LEARNING_MODELS_DIR, self.config.DEEP_LEARNING_CONFIG["model"]["name"])), 
+                                            device=torch.device(self.config.DEEP_LEARNING_CONFIG["device"]))
 
+        else:
+            pass # For future addition of models 
+        
         log.logger.debug("Cellpose Segmentor initialized.")
 
     def save_masks(self, masks):
