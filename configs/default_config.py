@@ -5,8 +5,11 @@ Default configuration for liquid biopsy segmentation.
 import os
 import multiprocessing
 
+# Index jump from DAPI to CK, CK to CD45 and CD45 to fitc
+SLIDE_INDEX_OFFSET = 10 # 10 for sample_data
+
 # Data paths
-DATA_ROOT = 'data'
+DATA_ROOT = 'sample_data'
 RAW_DATA_DIR = os.path.join(DATA_ROOT, 'raw')
 PROCESSED_DATA_DIR = os.path.join(DATA_ROOT, 'processed')
 ANNOTATIONS_DIR = os.path.join(DATA_ROOT, 'annotations')
@@ -68,7 +71,7 @@ CELL_SEGMENTATION_CONFIG = {
 DEEP_LEARNING_CONFIG = {
     # Model parameters
     'model': {
-        'name': 'unet',  # Options: 'unet', 'deeplab', 'maskrcnn'
+        'name': 'cellpose_model',  # Options: 'unet', 'deeplab', 'maskrcnn'
         'backbone': 'resnet34',
         'input_channels': 3,
         'num_classes': 1,  # 1 for binary segmentation
@@ -91,7 +94,9 @@ DEEP_LEARNING_CONFIG = {
         'use_augmentation': True,
         'validation_split': 0.2,
         'test_split': 0.1,
-    }
+    },
+
+    'device': "cuda"  # Options: "cuda", "cpu", "mps"
 }
 
 # Evaluation parameters
