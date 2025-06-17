@@ -31,7 +31,7 @@ class CellposeSegmentor(BaseSegmenter):
 
         else:
             pass # For future addition of models 
-        
+
         log.logger.debug("Cellpose Segmentor initialized.")
 
     def save_masks(self, masks):
@@ -45,4 +45,6 @@ class CellposeSegmentor(BaseSegmenter):
     def segment(self, images):
         masks, _, _ =  self.model.eval(images,diameter=15,channels=[0, 0]) # test if pasing all the frames at once or one at a time is faster 
         
-        return np.array(masks).astype(bool).astype(np.uint8)*255 # binarize the masks and convert back to uint8
+        # return np.array(masks).astype(bool).astype(np.uint8)*255 # binarize the masks for visual check
+        
+        return masks
