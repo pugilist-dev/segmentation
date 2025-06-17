@@ -62,72 +62,75 @@ class TraditionalSegmenterFactory:
             try:
                 return self.segmenters[method].segment(image)
             except Exception as e:
-                print(f"Error segmenting with method '{method}': {e}")
-                # Return a default mask on error
-                if len(image.shape) == 3:
-                    return np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
-                else:
-                    return np.zeros_like(image, dtype=np.uint8)
+                # Log error without printing to console
+                return np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
         
         # Run all enabled methods and collect results
         results = {}
         for name, segmenter in self.segmenters.items():
             try:
                 mask = segmenter.segment(image)
-                # Validate mask
-                if mask is not None and mask.size > 0:
-                    results[name] = mask
-                else:
-                    print(f"Warning: Method '{name}' returned an invalid mask")
+                results[name] = mask
             except Exception as e:
-                print(f"Error with segmentation method '{name}': {e}")
-                traceback.print_exc()
+                # Log error without printing to console
+                results[name] = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
         
         return results
     
-    def segment_combine(self, image, combine_method='vote'):
+    def segment_combine(self, segmentation_results, image, combine_method='vote'):
         """
-        Segment using all enabled methods and combine the results.
+        Combine segmentation results from multiple methods.
         
         Args:
-            image (numpy.ndarray): Input image to segment.
-            combine_method (str): Method to combine results:
-                - 'vote': Majority voting (default)
-                - 'union': Union of all masks
-                - 'intersection': Intersection of all masks
-                
+            segmentation_results (dict): Results from segment() method
+            image (numpy.ndarray): Original input image  
+            combine_method (str): Method to combine results ('vote', 'union', 'intersection')
+            
         Returns:
-            numpy.ndarray: Combined binary mask.
+            numpy.ndarray: Combined segmentation mask
         """
         try:
-            results = self.segment(image)
-            if not results:
-                raise ValueError("No segmentation methods enabled or all methods failed")
+            # Filter out invalid results
+            valid_results = {}
+            for name, mask in segmentation_results.items():
+                if mask is not None and mask.size > 0:
+                    # Validate mask dimensions
+                    expected_shape = (image.shape[0], image.shape[1])
+                    if mask.shape[:2] == expected_shape:
+                        valid_results[name] = mask
+                    # else: silently skip invalid masks
+                # else: silently skip invalid masks
             
-            # Stack masks for processing
-            masks = np.stack(list(results.values()), axis=0)
+            if not valid_results:
+                # Return empty mask if no valid results
+                return np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
+            
+            # Convert all masks to same format (binary)
+            binary_masks = []
+            for name, mask in valid_results.items():
+                # Ensure mask is binary (0 and 1)
+                if mask.dtype != np.uint8:
+                    mask = mask.astype(np.uint8)
+                if np.max(mask) > 1:
+                    mask = (mask > 0).astype(np.uint8)
+                binary_masks.append(mask)
+            
+            # Stack masks for combination
+            stacked = np.stack(binary_masks, axis=2)
             
             if combine_method == 'vote':
-                # Majority vote (more than half of the methods)
-                threshold = masks.shape[0] / 2
-                combined = np.sum(masks, axis=0) > threshold
-                
+                # Majority voting
+                return (np.mean(stacked, axis=2) >= 0.5).astype(np.uint8)
             elif combine_method == 'union':
-                # Union (any method detected)
-                combined = np.any(masks, axis=0)
-                
+                # Union (any method detects foreground)
+                return (np.max(stacked, axis=2)).astype(np.uint8)
             elif combine_method == 'intersection':
-                # Intersection (all methods must detect)
-                combined = np.all(masks, axis=0)
+                # Intersection (all methods must agree)
+                return (np.min(stacked, axis=2)).astype(np.uint8)
+            else:
+                # Default to majority voting
+                return (np.mean(stacked, axis=2) >= 0.5).astype(np.uint8)
                 
-            else:
-                raise ValueError(f"Unknown combine method: {combine_method}")
-            
-            return combined.astype(np.uint8)
         except Exception as e:
-            print(f"Error combining segmentation methods: {e}")
-            # Return a default mask on error
-            if len(image.shape) == 3:
-                return np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
-            else:
-                return np.zeros_like(image, dtype=np.uint8) 
+            # Return empty mask as fallback
+            return np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8) 
