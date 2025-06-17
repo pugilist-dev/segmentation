@@ -81,8 +81,7 @@ class OtsuSegmenter(BaseSegmenter):
             # Use regular THRESH_BINARY with THRESH_OTSU to get the threshold value
             otsu_threshold, _ = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             
-            # Print debug info about the threshold
-            print(f"Otsu threshold value: {otsu_threshold}")
+
             
             # Take the minimum of Otsu's threshold and the configured minimum value
             threshold_value = min(otsu_threshold, self.min_threshold)
@@ -91,16 +90,8 @@ class OtsuSegmenter(BaseSegmenter):
             # Use THRESH_BINARY_INV to get bright objects as foreground
             _, mask = cv2.threshold(gray, threshold_value, 255, cv2.THRESH_BINARY_INV)
             
-            # Debug visualization of the mask distribution
-            print(f"Otsu raw mask unique values: {np.unique(mask)}")
-            foreground_percent = np.sum(mask > 0) / mask.size * 100
-            print(f"Otsu thresholding: foreground is {foreground_percent:.2f}% of the image")
             
-            # Debug info about the mask patterns
-            if mask.size < 10000:  # Only for reasonably small masks
-                print("Sample of Otsu threshold mask:")
-                print(mask[0:min(10, mask.shape[0]), 0:min(10, mask.shape[1])])
-            
+
             # Check if thresholding was successful
             if mask is None:
                 raise ValueError("Otsu thresholding failed to produce a mask")

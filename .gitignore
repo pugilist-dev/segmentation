@@ -54,3 +54,10 @@ results/metrics/
 logs/
 *.log
 *.log.* 
+
+# Don't track Images
+/data/*
+*.tif
+*.tiff
+Tile*
+/results/*

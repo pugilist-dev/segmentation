@@ -29,7 +29,8 @@ TRADITIONAL_CONFIG = {
         'use_watershed_separation': True,  # Whether to use watershed separation for touching objects
         'watershed_min_distance': 10,  # Minimum distance between local maxima for watershed
         'min_object_size': 50,  # Remove objects smaller than this
-        'min_hole_size': 20,  # Fill holes smaller than this
+        'min_hole_size': 9,  # Fill holes smaller than this
+        'max_object_size': None,  # Maximum size of objects to keep
     },
     'adaptive_threshold': {
         'enable': True,
@@ -38,7 +39,8 @@ TRADITIONAL_CONFIG = {
         'use_watershed_separation': True,  # Whether to use watershed separation for touching objects
         'watershed_min_distance': 10,  # Minimum distance between local maxima for watershed
         'min_object_size': 50,  # Remove objects smaller than this
-        'min_hole_size': 20,  # Fill holes smaller than this
+        'min_hole_size': 9,  # Fill holes smaller than this
+        'max_object_size': None,  # Maximum size of objects to keep
     },
 }
 

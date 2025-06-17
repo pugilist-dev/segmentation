@@ -26,3 +26,7 @@ black>=21.6b0
 isort>=5.9.0
 flake8>=3.9.0 
 tqdm>=4.64.0
+loguru>=0.7.0
+
+# Optional GPU acceleration (install with: pip install cupy-cuda12x)
+# cupy-cuda12x>=13.0.0  # Uncomment if you have CUDA 12.x GPU support
