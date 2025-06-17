@@ -39,6 +39,9 @@ ENV/
 data/raw/
 data/processed/
 data/annotations/
+# sample_data/raw
+# sample_data/processed
+# sample_data/annotations
 
 # Models (don't track large model files)
 models/deep_learning/*.pt
