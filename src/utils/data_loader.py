@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 from typing import List, Dict, Tuple, Optional, Union, Callable
 from dataclasses import dataclass
-
+from pathlib import Path
 
 @dataclass
 class SegmentationSample:
@@ -26,6 +26,9 @@ class SegmentationDataLoader:
     
     This class loads images from a directory structure and can optionally
     load corresponding ground truth masks for training or evaluation.
+
+    This class is also capable of combining grayscale scans into a 
+    single RGB image and save it for future use. 
     """
     
     def __init__(
@@ -166,6 +169,7 @@ class SegmentationDataLoader:
         return self.image_files.copy()
     
     def get_sample_with_mask(self, idx: int) -> Tuple[np.ndarray, np.ndarray]:
+
         """
         Get image and mask for the given index.
         
@@ -176,3 +180,73 @@ class SegmentationDataLoader:
         if sample.mask is None:
             raise ValueError(f"No mask available for image at index {idx}")
         return sample.image, sample.mask 
+    
+    def load_slides(self, slides_path):
+        """
+        Load images from the specified directory, and return a list of images as numpy arrays.
+        
+        Args:
+            slides_path (str): Path to the directory containing the slide images.
+
+        Returns:
+            np.ndarray (16 bit): Array of images loaded from the directory, each image is a numpy array.
+        """
+        image_files = sorted(os.listdir(slides_path)) # list index must match the order of scans 
+
+        frames = []
+        for image_file in image_files:
+            image = cv2.imread(Path(slides_path, image_file), cv2.IMREAD_GRAYSCALE)
+            image = (image*257).astype(np.uint16)  # Convert 8-bit to 16-bit
+            frames.append(image)
+
+        return np.array(frames, dtype=np.uint16)
+
+
+    def compute_composite(self, dapi, ck, cd45, fitc):
+        """
+        COmbine DAPI, CK, CD45, and FITC channels into a single RGB composite image. Used by CellposeSegmentor.
+
+        Args:
+            dapi (np.ndarray): DAPI channel image.
+            ck (np.ndarray): CK channel image.
+            cd45 (np.ndarray): CD45 channel image.
+            fitc (np.ndarray): FITC channel image.
+        """
+
+        dtype = dapi.dtype
+        max_val = np.iinfo(dapi.dtype).max
+
+        dapi = dapi.astype(np.float32)
+        ck = ck.astype(np.float32)
+        cd45 = cd45.astype(np.float32)
+        fitc = fitc.astype(np.float32)
+
+        rgb = np.zeros((dapi.shape[0], dapi.shape[1], 3), dtype='float')
+        
+        rgb[...,0] = ck+fitc
+        rgb[...,1] = cd45+fitc
+        rgb[...,2] = dapi.astype(np.float32)+fitc 
+        rgb[rgb > max_val] = max_val # Clips overflow 
+
+        rgb = rgb.astype(dtype)
+        return rgb
+
+    def get_composites(self, slides, offset, save_composites=False):
+        """
+        Create composite images from the provided slides.
+        """
+        frames=[]
+        for i in range(offset): 
+            image0 = slides[i]
+            image1 = slides[i+offset]
+            image2 = slides[i+2*offset]
+            # skip Bright Field scan
+            image3 = slides[i+3*offset] 
+            frames.append(self.compute_composite(image0, image1, image2, image3)) 
+
+            if save_composites:
+                composite_path = Path(self.mask_dir, f"composite_{i}.png")
+                cv2.imwrite(str(composite_path), frames[-1]) 
+
+        return frames
+ 

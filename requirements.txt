@@ -26,6 +26,7 @@ black>=21.6b0
 isort>=5.9.0
 flake8>=3.9.0 
 tqdm>=4.64.0
+# Logging and monitoring
 loguru>=0.7.0
 
 # Optional GPU acceleration (install with: pip install cupy-cuda12x)
