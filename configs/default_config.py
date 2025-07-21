@@ -6,7 +6,7 @@ import os
 import multiprocessing
 
 # Index jump from DAPI to CK, CK to CD45 and CD45 to fitc
-SLIDE_INDEX_OFFSET = 10 # 10 for sample_data
+SLIDE_INDEX_OFFSET = 500 # 10 for sample_data
 
 # Data paths
 DATA_ROOT = 'sample_data'

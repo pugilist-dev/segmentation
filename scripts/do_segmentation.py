@@ -18,31 +18,19 @@ import configs.default_config as config
 
 from src.utils.data_loader import SegmentationDataLoader
 from src.deep_learning.cellpose import CellposeSegmentor
-
-def main():
-    log.logger.info("Starting segmentation process...")
-
-    data_loader = SegmentationDataLoader(
-        image_dir=config.RAW_DATA_DIR,
-        mask_dir=config.PROCESSED_DATA_DIR,
-        image_ext='.jpg', # ['.png', '.jpg', '.jpeg'],
-        mask_ext='.jpg', # ['.png', '.jpg', '.jpeg'],
-        recursive=True
-    )
-    log.logger.debug("Segmentor Data Loader initialized.")
-
-    cellposeSegmentor = CellposeSegmentor(config) # disgusting way to pass around configs but fast
-
-from src.preprocessing import Preprocessor
 from configs.default_config import TRADITIONAL_CONFIG, CELL_SEGMENTATION_CONFIG
 from src.utils import SegmentationDataLoader
 from loguru import logger
 
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Segmentation for liquid biopsy images')
-    parser.add_argument('data_dir', type=str, default='data/raw',
+    parser.add_argument('--slide_id', type=str,default='',
+                        help='Slide ID that needs segmentation')
+    parser.add_argument('--data_dir', type=str, default='data/raw',
                         help='Directory containing input images')
-    parser.add_argument('--result_dir', type=str, default='results/instance_segmentation',
+    parser.add_argument('--result_dir', type=str, default='data/processed',
                         help='Directory to save segmentation results')
     parser.add_argument('--workers', type=int, default=1,
                         help='Number of parallel processed')
@@ -57,6 +45,20 @@ def parse_args():
     return args
 
 def main():
+    args = parse_args()
+    log.logger.info("Starting segmentation process...")
+
+    data_loader = SegmentationDataLoader(
+        image_dir=args.data_dir,
+        mask_dir=args.result_dir,
+        image_ext=['.png', '.jpg', '.jpeg', '.tif', '.tiff'],
+        mask_ext= ['.png', '.jpg', '.jpeg', '.tif', '.tiff'],
+        recursive=True
+    )
+    log.logger.debug("Segmentor Data Loader initialized.")
+
+    cellposeSegmentor = CellposeSegmentor(config)
+    """
     # Configure the traditional segmentation methods
     traditional_config = TRADITIONAL_CONFIG
     # Override the default min and max object sizes
@@ -91,11 +93,14 @@ def main():
             results.append(result)
     else:
         pool = multiprocessing.Pool(processes=args.workers)
-    
+    """
+    # Completed: IF slide_id is provided, use the slide_id and data_dir to load the slides
+    # TODO: Multiprocessing data loader
     log.logger.debug("Loading slides...")
-    slides = data_loader.load_slides(config.RAW_DATA_DIR)
+    slides = data_loader.load_slides(args.data_dir)
 
-    log.logger.debug("Creating composits...")
+    # TODO: A non offset based composite creation should be implemented in the data loader
+    log.logger.debug("Creating composites...")
     composite_images = data_loader.get_composites(slides, config.SLIDE_INDEX_OFFSET) # creaing composites should be preprocessing which is in segmentor 
 
     log.logger.debug("Running Segmentation...")
@@ -107,5 +112,4 @@ def main():
     log.logger.info("Segmentation process completed successfully.")
 
 if __name__ == "__main__":
-    args = parse_args()
-    main(args) 
+    main() 

@@ -55,6 +55,8 @@ class SegmentationDataLoader:
         """
         self.image_dir = image_dir
         self.mask_dir = mask_dir
+
+
         self.image_ext = [image_ext] if isinstance(image_ext, str) else image_ext
         self.mask_ext = [mask_ext] if isinstance(mask_ext, str) else mask_ext
         self.image_preprocessing = image_preprocessing
@@ -65,6 +67,7 @@ class SegmentationDataLoader:
         self.image_files = self._find_files(image_dir, self.image_ext)
         
         # Map images to masks (if available)
+        # Match pairs only if there are masks in the mask_dir
         self.sample_pairs = self._pair_images_with_masks() if mask_dir else None
     
     def _find_files(self, directory: str, extensions: List[str]) -> List[str]:
@@ -181,7 +184,7 @@ class SegmentationDataLoader:
             raise ValueError(f"No mask available for image at index {idx}")
         return sample.image, sample.mask 
     
-    def load_slides(self, slides_path):
+    def load_slides(self, data_dir, slide_id=None):
         """
         Load images from the specified directory, and return a list of images as numpy arrays.
         
@@ -191,12 +194,19 @@ class SegmentationDataLoader:
         Returns:
             np.ndarray (16 bit): Array of images loaded from the directory, each image is a numpy array.
         """
-        image_files = sorted(os.listdir(slides_path)) # list index must match the order of scans 
+        if slide_id is None:
+            slide_path = Path(data_dir)
+        else:
+            slide_path = Path(data_dir, slide_id)
+        if not slide_path.exists():
+            raise ValueError(f"Slide path {slide_path} does not exist")
+        
+        
+        image_files = sorted(os.listdir(slide_path)) # list index must match the order of scans 
 
         frames = []
         for image_file in image_files:
-            image = cv2.imread(Path(slides_path, image_file), cv2.IMREAD_GRAYSCALE)
-            image = (image*257).astype(np.uint16)  # Convert 8-bit to 16-bit
+            image = cv2.imread(Path(slide_path, image_file), cv2.IMREAD_GRAYSCALE)
             frames.append(image)
 
         return np.array(frames, dtype=np.uint16)
@@ -216,16 +226,16 @@ class SegmentationDataLoader:
         dtype = dapi.dtype
         max_val = np.iinfo(dapi.dtype).max
 
-        dapi = dapi.astype(np.float32)
-        ck = ck.astype(np.float32)
-        cd45 = cd45.astype(np.float32)
-        fitc = fitc.astype(np.float32)
+        dapi = dapi.astype(np.uint16)
+        ck = ck.astype(np.uint16)
+        cd45 = cd45.astype(np.uint16)
+        fitc = fitc.astype(np.uint16)
 
-        rgb = np.zeros((dapi.shape[0], dapi.shape[1], 3), dtype='float')
+        rgb = np.zeros((dapi.shape[0], dapi.shape[1], 3), dtype='uint16')
         
         rgb[...,0] = ck+fitc
         rgb[...,1] = cd45+fitc
-        rgb[...,2] = dapi.astype(np.float32)+fitc 
+        rgb[...,2] = dapi+fitc 
         rgb[rgb > max_val] = max_val # Clips overflow 
 
         rgb = rgb.astype(dtype)
