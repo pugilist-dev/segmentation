@@ -17,7 +17,7 @@ from .utils.mask import binary_masks
 import loguru as log
 
 class CellposeSegmentor(BaseSegmenter):
-    def __init__(self, config):
+    def __init__(self, config: Config):
         """
         Initialize the Cellpose segmentor.
         
@@ -48,18 +48,15 @@ class CellposeSegmentor(BaseSegmenter):
         if core.use_gpu() == False:
             raise ImportError("No GPU access")
         
-        if not Path(self.config.DEEP_LEARNING_MODELS_DIR).exists():
-            log.logger.warning("Pretrained model path does not exist, using default model.")
-            self.config.DEEP_LEARNING_CONFIG["model"]["name"] = "cpsam"  # Default model if not specified # not sure why syntax is so cursed 
-        
-        if self.config.MODEL == 'cellpose': 
-            self.model = models.CellposeModel(gpu = True, 
-                                            pretrained_model=str(Path(self.config.DEEP_LEARNING_MODELS_DIR, self.config.DEEP_LEARNING_CONFIG["model"]["name"])), 
-                                            device=torch.device(self.config.DEEP_LEARNING_CONFIG["device"]))
+        if not self.config.data_dir.exists():
+            raise FileNotFoundError(f"Data directory {self.config.data_dir} does not exist")
 
-        else:
-            pass # For future addition of models 
-
+        if self.config.pretrained_model is None:
+            raise ValueError("Pretrained model must be specified")
+      
+        self.model = models.CellposeModel(gpu = True, 
+                                          pretrained_model=str(self.config.pretrained_model), # ignore Pylance error, this code is correct
+                                          device=torch.device(self.config.device))
         self.image_data = np.empty(1)
         self.composite_data = np.empty(1)
         self.masks = np.empty(1)
@@ -67,7 +64,7 @@ class CellposeSegmentor(BaseSegmenter):
 
         log.logger.debug("Cellpose Segmentor initialized.")
 
-    def segment(self, images=None):
+    def segment(self, images=None) -> np.ndarray:
         """
         Segment the input images.
         
@@ -83,7 +80,7 @@ class CellposeSegmentor(BaseSegmenter):
         self.masks, _, _ = self.model.eval(self.composite_data, diameter=15, channels=[0, 0]) 
         return self.masks
         
-    def preprocess(self, images=None):
+    def preprocess(self, images=None) -> np.ndarray:
         """
         Preprocess the loaded input images before segmentation by combining different scan types into a BRG image understood by the segmentation module.
         
@@ -108,11 +105,11 @@ class CellposeSegmentor(BaseSegmenter):
             self.stacked_scans_data.append(stacked)
             frames.append(compute_composite(image0, image1, image2, image3))  
 
-        self.stacked_scans_data = np.stack(np.delete(self.stacked_scans_data, 0, axis=0), axis =0) # remove the first empty array
-        self.composite_data = frames
-        return frames 
+        self.stacked_scans_data = np.stack(self.stacked_scans_data[1:], axis=0) # remove the first empty array
+        self.composite_data = np.ndarray(frames) 
+        return np.ndarray(frames) 
 
-    def postprocess(self, masks=None, images=None):
+    def postprocess(self, masks=None, images=None) -> list[np.ndarray]:
         """
         Postprocess the segmentation mask. Extracts cropped cell images using the segmented masks.       
  
@@ -150,13 +147,13 @@ class CellposeSegmentor(BaseSegmenter):
         del self.stacked_scans_data
 
         return (
-            np.transpose(np.stack(image_crops, axis = 0), (0,3,1,2)),   # Convert to (N, C, H, W,) because thats what the current extration model expects,
+           [ np.transpose(np.stack(image_crops, axis = 0), (0,3,1,2)),   # Convert to (N, C, H, W,) because thats what the current extration model expects,
                                                                         # it is probaly worth a look at why that choice was made and if it can be undone
             binary_masks(np.stack((mask_crops), axis=0)),
-            np.stack(centers, axis=0)
+            np.stack(centers, axis=0)]
         )
 
-    def load_data(self, image_dir):
+    def load_data(self, image_dir) -> np.ndarray:
         """
         Load images from the specified directory, and return a list of images as numpy arrays.
         The returned value is optional to use and self.image_data is what the segment wants to use unless overwritten
@@ -174,10 +171,19 @@ class CellposeSegmentor(BaseSegmenter):
         self.image_data = np.array(frames, dtype=np.uint16) 
         return self.image_data  
 
-    def save_masks(self, masks):
+    def save_masks(self, masks) -> None:
         if not self.config.mask_output_dir.exists():
             self.config.mask_output_dir.mkdir(parents=True, exist_ok=True)
 
         for i, mask in enumerate(masks):
-            mask_path = Path(self.config.mask_output_dir, f"mask_{i}.png")
-            cv2.imwrite(mask_path, mask.astype(np.uint16))
+            mask_path = self.config.mask_output_dir / f"mask_{i}.png"
+            
+            # Handle mask format
+            if mask.dtype == bool or mask.max() <= 1:
+                mask_to_save = (mask * 255).astype(np.uint8)
+            else:
+                mask_to_save = mask.astype(np.uint8)
+            
+            success = cv2.imwrite(str(mask_path), mask_to_save)
+            if not success:
+                print(f"Warning: Failed to save mask {i} to {mask_path}")

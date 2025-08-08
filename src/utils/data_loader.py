@@ -196,30 +196,6 @@ class SegmentationDataLoader:
             raise ValueError(f"No mask available for image at index {idx}")
         return sample.image, sample.mask 
     
-    def load_slides(self, data_dir, slide_id=None):
-        """
-        Load images from the specified directory, and return a list of images as numpy arrays.
-        
-        Args:
-            slides_path (str): Path to the directory containing the slide images.
-
-        Returns:
-            np.ndarray (16 bit): Array of images loaded from the directory, each image is a numpy array.
-        """
-        if slide_id is None:
-            slide_path = Path(data_dir)
-        else:
-            slide_path = Path(data_dir, slide_id)
-        if not slide_path.exists():
-            raise ValueError(f"Slide path {slide_path} does not exist")
-            
-        image_files = sorted(os.listdir(slide_path)) # list index must match the order of scans 
-
-        with multiprocessing.Pool(multiprocessing.cpu_count() - 2) as p: # save one core for the system and one more for good luck
-            args = [(slide_path, f) for f in image_files]
-            frames = p.map(load_img, args)
-
-        return np.array(frames, dtype=np.uint16) 
 
     def compute_composite(self, dapi, ck, cd45, fitc):
         """
@@ -271,3 +247,28 @@ class SegmentationDataLoader:
 
         return frames
  
+    # km 
+    def load_slides(self, data_dir, slide_id=None):
+        """
+        Load images from the specified directory, and return a list of images as numpy arrays.
+        
+        Args:
+            slides_path (str): Path to the directory containing the slide images.
+
+        Returns:
+            np.ndarray (16 bit): Array of images loaded from the directory, each image is a numpy array.
+        """
+        if slide_id is None:
+            slide_path = Path(data_dir)
+        else:
+            slide_path = Path(data_dir, slide_id)
+        if not slide_path.exists():
+            raise ValueError(f"Slide path {slide_path} does not exist")
+            
+        image_files = sorted(os.listdir(slide_path)) # list index must match the order of scans 
+
+        with multiprocessing.Pool(multiprocessing.cpu_count() - 2) as p: # save one core for the system and one more for good luck
+            args = [(slide_path, f) for f in image_files]
+            frames = p.map(load_img, args)
+
+        return np.array(frames, dtype=np.uint16) 
