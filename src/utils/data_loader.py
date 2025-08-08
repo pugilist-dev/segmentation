@@ -9,6 +9,7 @@ import numpy as np
 from typing import List, Dict, Tuple, Optional, Union, Callable
 from dataclasses import dataclass
 from pathlib import Path
+import multiprocessing 
 
 @dataclass
 class SegmentationSample:
@@ -18,6 +19,14 @@ class SegmentationSample:
     mask_path: Optional[str] = None
     mask: Optional[np.ndarray] = None
     metadata: Optional[Dict] = None
+
+def load_img(args):
+    """
+    Util function for each worker in a pool for loading in raw data images
+    """
+    folder, filename = args
+    full_path = os.path.join(folder,filename)
+    return cv2.imread(full_path, cv2.IMREAD_GRAYSCALE)
 
 
 class SegmentationDataLoader:
@@ -35,8 +44,8 @@ class SegmentationDataLoader:
         self,
         image_dir: str,
         mask_dir: Optional[str] = None,
-        image_ext: Union[str, List[str]] = ('.png', '.jpg', '.jpeg', '.tif', '.tiff'),
-        mask_ext: Union[str, List[str]] = ('.png', '.jpg', '.jpeg', '.tif', '.tiff'),
+        image_ext: Union[str, List[str]] = ['.png', '.jpg', '.jpeg', '.tif', '.tiff'],
+        mask_ext: Union[str, List[str]] = ['.png', '.jpg', '.jpeg', '.tif', '.tiff'],
         image_preprocessing: Optional[Callable] = None,
         mask_preprocessing: Optional[Callable] = None,
         recursive: bool = False
@@ -92,6 +101,9 @@ class SegmentationDataLoader:
         Returns:
             Dictionary mapping image paths to mask paths
         """
+        if self.mask_dir == None:
+            return {} # never going to hit this line but removes errors below 
+
         pairs = {}
         mask_files = self._find_files(self.mask_dir, self.mask_ext)
         
@@ -200,21 +212,18 @@ class SegmentationDataLoader:
             slide_path = Path(data_dir, slide_id)
         if not slide_path.exists():
             raise ValueError(f"Slide path {slide_path} does not exist")
-        
-        
+            
         image_files = sorted(os.listdir(slide_path)) # list index must match the order of scans 
 
-        frames = []
-        for image_file in image_files:
-            image = cv2.imread(Path(slide_path, image_file), cv2.IMREAD_GRAYSCALE)
-            frames.append(image)
+        with multiprocessing.Pool(multiprocessing.cpu_count() - 2) as p: # save one core for the system and one more for good luck
+            args = [(slide_path, f) for f in image_files]
+            frames = p.map(load_img, args)
 
-        return np.array(frames, dtype=np.uint16)
-
+        return np.array(frames, dtype=np.uint16) 
 
     def compute_composite(self, dapi, ck, cd45, fitc):
         """
-        COmbine DAPI, CK, CD45, and FITC channels into a single RGB composite image. Used by CellposeSegmentor.
+        Combine DAPI, CK, CD45, and FITC channels into a single RGB composite image. Used by CellposeSegmentor.
 
         Args:
             dapi (np.ndarray): DAPI channel image.
@@ -253,6 +262,8 @@ class SegmentationDataLoader:
             # skip Bright Field scan
             image3 = slides[i+3*offset] 
             frames.append(self.compute_composite(image0, image1, image2, image3)) 
+            if self.mask_dir == None:
+                return {} # never going to hit this line but removes errors below 
 
             if save_composites:
                 composite_path = Path(self.mask_dir, f"composite_{i}.png")
