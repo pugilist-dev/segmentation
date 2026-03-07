@@ -1,6 +1,7 @@
 # Liquid Biopsy Image Segmentation
 
 This repository contains tools and models for semantic and instance segmentation of liquid biopsy microscope images.
+![Parts of the modules image](./high_level.JPG)
 
 ## Features
 
