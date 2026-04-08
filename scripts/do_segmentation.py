@@ -94,17 +94,16 @@ def main():
     else:
         pool = multiprocessing.Pool(processes=args.workers)
     """
-    # Completed: IF slide_id is provided, use the slide_id and data_dir to load the slides
-    # TODO: Multiprocessing data loader
     log.logger.debug("Loading slides...")
     slides = data_loader.load_slides(args.data_dir)
 
-    # TODO: A non offset based composite creation should be implemented in the data loader
     log.logger.debug("Creating composites...")
-    composite_images = data_loader.get_composites(slides, config.SLIDE_INDEX_OFFSET) # creaing composites should be preprocessing which is in segmentor 
+    composite_images = cellposeSegmentor.preprocess(slides) 
 
     log.logger.debug("Running Segmentation...")
     binary_masks = cellposeSegmentor.segment(composite_images)
+
+    image_crops, mask_crops, centers = cellposeSegmentor.postprocess()
 
     log.logger.debug("Saving masks...")
     cellposeSegmentor.save_masks(binary_masks)
